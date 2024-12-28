@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block title %}Upload File{% endblock %}
+{% block head %}
+  {{ super() }}
+  <style>
+    body{
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding:10%;
+    }
+    .form{
+      align-self: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: rgb(2,0,36);
+      background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(9,9,121,1) 35%, rgba(0,212,255,1) 100%);
+      padding: 130px;
+      gap: 30px;
+      border-radius: 25px;
+    }
+    h1{
+      font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+      color: aliceblue;
+    }
+    form{
+      display: flex;
+      justify-content: center;
+      align-items:center;
+    }
+  </style>
+{% endblock %}
+{% block content %}
+<div class = "form">
+  <h1>Upload File</h1>
+  <form action="/" method=post enctype=multipart/form-data>
+    <input type=file name=file>
+    <input type=submit value=Upload>
+  </form>
+</div>
+{% endblock %}

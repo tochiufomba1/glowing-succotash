@@ -1,0 +1,63 @@
+table {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.875rem;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td,
+th {
+    border: 1px solid #303740;
+    text-align: left;
+    padding: 8px;
+}
+
+th {
+    background-color: #1C2025;
+}
+
+table tbody tr.active-row {
+    font-weight: bold;
+    color: #4bbd7f;
+}
+
+table .edit-cell-container button {
+    border-radius: 50px;
+    height: 26px;
+    width: 26px;
+    border: 1px solid #ccc;
+    color: #ffb918;
+}
+
+table button[name="cancel"] {
+    color: #7b7b7b;
+}
+
+table button[name="done"] {
+    color: #4bbd7f;
+}
+
+table input,
+select {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+table .edit-cell {
+    display: flex;
+    gap: 5px;
+}
+
+input:invalid {
+    border: 2px solid red;
+}
+
+table .edit-cell-action button[name='done']:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+body{
+    padding: 0;
+}
