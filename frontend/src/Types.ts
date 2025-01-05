@@ -1,4 +1,5 @@
 export type Record = {
+    index: number;
     Date: string;
     Number: string;
     Payee: string;
@@ -8,6 +9,7 @@ export type Record = {
 }
 
 export type SummaryRecord = {
+    index: number,
     Description: string;
     Account: string;
 }

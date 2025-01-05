@@ -53,13 +53,14 @@ def clean_text_BERT(text):
 
 def classify(uploadFolder,filename, business):
     global loaded, vectorizer, classifier
+    
     loaded = False
     if not loaded:
         if business == "Nucare":
             vectorizer, classifier = load('./data/categorizer2.joblib')
         else:
             vectorizer, classifier = load('./data/categorizer.joblib')
-        # vectorizer, classifier = load('./data/categorizer.joblib')
+
         loaded = True
 
     # TODO: Add functionality for csv files
@@ -74,6 +75,7 @@ def classify(uploadFolder,filename, business):
     text_test_raw = inputData['Description']
     text_test_BERT = text_test_raw.apply(lambda x: clean_text_BERT(x))
 
+    # classify data
     x = vectorizer.transform(text_test_BERT.values.astype('U')).toarray()
     categories = classifier.predict(x)
 
@@ -84,10 +86,13 @@ def classify(uploadFolder,filename, business):
     inputData['Account'] = pd.Series(categories)
     inputData['Number'] = ""
     inputData['Payee'] = ""
-    #inputData['Amount'] = ""
-    inputData = inputData[['Account Number','Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
-    #inputData = inputData.sort_values(by=['Description'], inplace=True, ascending=True)
+    inputData['Amount'] = ""
+    inputData = inputData[['Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
+
+    # add indices to rows for updates to data by users
+    inputData = inputData.reset_index()
     
+    # tables to be sent to user (both use cleaned text)
     interactData = inputData.copy()
     interactData['Description'] = text_test_BERT
     summaryPage = interactData.copy()
@@ -96,7 +101,6 @@ def classify(uploadFolder,filename, business):
 
 def createTable(business, filename):
     OrigDF, BertDF, summaryPage = classify(app.config['UPLOAD_FOLDER'], filename, business)
-    # df = label(app.config['UPLOAD_FOLDER'], business, filename) # create new file?
     session['data'] = pickle.dumps(OrigDF)
     session['bertDescriptions'] = pickle.dumps(BertDF)
 
@@ -104,9 +108,11 @@ def createTable(business, filename):
     summaryPage = summaryPage.drop_duplicates(subset=['Description', 'Account'], keep='first').copy()
     summaryPage.drop(columns=['Date', 'Number', 'Payee', 'Amount',], errors='ignore')
     summaryPage = summaryPage[['Description', 'Account']]
+    summaryPage = summaryPage.reset_index()
 
     session['summaryPage'] = pickle.dumps(summaryPage)
     session['filename'] = filename
+    session['business'] = business
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -133,24 +139,6 @@ app.add_url_rule(
     "/upload", endpoint="upload_file", build_only=True
 )
 
-def generate_session_id(length=16):
-    """Generates a random session ID string."""
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
-
-@app.route('/downloads/<name>', methods=['GET'])
-def download_file(name):
-    print(name)
-    # response = make_response(send_file(os.path.join("tmp", name))) 
-    # response.headers['Content-Disposition'] = f"attachment; filename={name}"
-    # response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    # return response
-    return send_file(os.path.join("tmp", name), as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-app.add_url_rule(
-    "/downloads/<name>", endpoint="download_file", build_only=True
-)
-
 @app.route('/api/dataTable')
 def data():
     # data for the table and summary tabs
@@ -164,7 +152,7 @@ def data():
     res = cur.execute("SELECT * FROM nucareCOA")
 
     nucareCOA = [str(row[0]) for row in res]
-    
+
     conn.close()
 
     # convert to JSON and send to frontend
@@ -189,90 +177,55 @@ app.add_url_rule(
     "/api/dataTable", endpoint="data", build_only=True
 )
 
-@app.route('/api/data')
-def getData():
-    df_pickled = session.get('data2', None)
-
-    if df_pickled:
-        # df = pickle.loads(SESSION_REDIS.get(df_id))
-        df = pickle.loads(df_pickled)
-        df_json = df.to_json(orient='records') 
-        return jsonify(df_json)
-    else:
-        dataw = {
-        'message': 'Hello, world!',
-        'number': 42
-        }
-        return jsonify(dataw)
-
-app.add_url_rule(
-    "/api/dataTable", endpoint="data", build_only=True
-)
-
-def recordDifferences(newData):
-    df_pickled = session.get('data', None)
-    oldData = pickle.loads(df_pickled)
-
-    oldData['Date'] = oldData['Date'].astype(str)
-    newData['Date'] = newData['Date'].astype(str)
+def recordDifferences(oldData, newData):
+    # oldData['Date'] = oldData['Date'].astype(str)
+    # newData['Date'] = newData['Date'].astype(str)
     
     # find differences (rows that user updated in 'newData')
     merged_df = pd.merge(oldData, newData, how='right', indicator=True)
 
     # collect differences into dataframe
     final_df = merged_df[merged_df['_merge'] == 'right_only']
-    final_df.drop(columns=['_merge'])
+    final_df.drop(columns=['_merge', 'index'])
+    final_df = final_df[['Description', 'Account']]
+   
+    # user didn't find any
+    if(final_df.shape[0] != 0):
+        # write dataframe of differences to database
+        print("final")
+        print(final_df)
 
-    # write dataframe of differences to database
-    conn = sqlite3.connect('database.db')
-    df.to_sql('records', conn, index=False)
-    conn.close()
-
-@app.route('/api/summary')
-def summary():
-    df_pickled = session.get('data2', None)
-    df = pickle.loads(df_pickled)
-
-    # get unique Description and Account pairings from data table
-    unique_df = df.drop_duplicates(subset=['Description', 'Account'], keep='first').copy()
-    unique_df.drop(columns=['Date', 'Number', 'Payee', 'Amount',], errors='ignore')
-    unique_df = unique_df[['Description', 'Account']]
-
-    # send table to user
-    df_json = unique_df.to_json(orient='records') 
-    return jsonify(df_json)
-
-@app.route('/api/update', methods=['POST'])
-def update():
-    df_pickled = session.get('data', None)
-    df = pickle.loads(df_pickled)
-
-    # get description
-    desc = ""
-    newAccount = ""
-
-    df.loc[df['Description'] == desc, 'Account'] = newAccount
-    indices = df.index[df['A'] > 1]
-    return "ok"
-    
-
+        conn = sqlite3.connect('database.db')
+        try:
+            final_df.to_sql(lower(session.get('business')), conn, index=False, if_exists = 'append')
+        except Exception as e:
+            print("Failed operation")
+            
+        conn.close()
+        
+        # execute script to retrain model
+    return
 
 @app.route('/api/export', methods=['POST'])
 def export():
-    # read user edits
-    data = request.get_json()
-    print(data)
-    # newFrame = pd.read_json(io.StringIO(json.dumps(data)))
-
+    # Get frame with the original descriptions
     df_pickled = session.get('data', None)
-    newFrame = pickle.loads(df_pickled)
+    oldFrame = pickle.loads(df_pickled)
 
-    # update database
-    # recordDifferences(newFrame)
+    # Get frame that the user interacts with
+    itemizedUnloaded = session.get('bertDescriptions', None)
+    df_itemized = pickle.loads(itemizedUnloaded)
 
-    # create excel file
+    # Place original descriptions in data user has interacted with
+    df_itemized['Description'] = oldFrame['Description'].values
+
+    # Update database
+    recordDifferences(oldFrame, df_itemized)
+
+    # Create excel file
+    df_itemized.drop(columns=['index'])
     excel_file = io.BytesIO()
-    newFrame.to_excel(excel_file, index=False)
+    df_itemized.to_excel(excel_file, index=False)
     excel_file.seek(0)
 
     return send_file(excel_file, as_attachment=True, download_name= session['filename'][:-5] + "_labeled" + ".xlsx")
@@ -281,3 +234,43 @@ def export():
 app.add_url_rule(
     "/api/export", endpoint="data", build_only=True
 )
+
+@app.route("/api/updateItem/<int:id>", methods=['PUT'])
+def updateTable(id):
+    data = request.get_json()
+
+    # update itemized table
+    itemizedUnloaded = session.get('bertDescriptions', None)
+    df_itemized = pickle.loads(itemizedUnloaded)
+    df_itemized.iloc[id, 4] = data['Account']
+    session['bertDescriptions'] = pickle.dumps(df_itemized)
+    print(data)
+
+    return "Success"
+
+# app.add_url_rule(
+#     "/api/export", endpoint="data", build_only=True
+# )
+
+@app.route("/api/updateSummary/<int:id>", methods=['PUT'])
+def updatSummaryTable(id):
+    data = request.get_json()
+    
+    # update summary table
+    summaryUnloaded = session.get('summaryPage', None)
+    df_summary = pickle.loads(summaryUnloaded)
+    df_summary.iloc[id, 2] = data['Account']
+    session['summaryPage'] = pickle.dumps(df_summary)
+
+    # update itemized table
+    itemizedUnloaded = session.get('bertDescriptions', None)
+    df_itemized = pickle.loads(itemizedUnloaded)
+    df_itemized.loc[df_itemized['Description'] == data['Description'], ['Account']] = data['Account']
+    session['bertDescriptions'] = pickle.dumps(df_itemized)
+    
+    # print(data)
+    return "Success"
+
+# app.add_url_rule(
+#     "/api/export", endpoint="data", build_only=True
+# )

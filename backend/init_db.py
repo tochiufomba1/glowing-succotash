@@ -1,8 +1,8 @@
 import sqlite3
 import pandas as pd
 
-df3 = pd.read_excel("static/nucareCOA.xlsx")
-# df3 = pd.read_csv('./data/2020_4NucareTrainingData.csv', encoding='utf-8', header=0)
+df1 = pd.read_excel("static/nucareCOA.xlsx")
+# df2 = pd.read_csv('./data/2020_4NucareTrainingData.csv', encoding='utf-8', header=0)
 
 conn = sqlite3.connect('database.db')
 
@@ -22,7 +22,7 @@ except Exception as e:
 
 cur = conn.cursor()
 
-df3.to_sql('nucareCOA', conn, if_exists='replace', index=False)
+df1.to_sql('nucareCOA', conn, if_exists='replace', index=False)
 
 conn.commit()
 conn.close()

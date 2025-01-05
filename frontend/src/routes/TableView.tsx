@@ -9,41 +9,29 @@ import {
     getPaginationRowModel,
 } from '@tanstack/react-table'
 
-let options = []
-// import { useNavigate } from "react-router-dom";
-
-// type Record = {
-//     Date: string;
-//     Number: string;
-//     Payee: string;
-//     Account: string;
-//     Amount: number;
-//     Description: string;
-// }
-
 const EditCell = ({ row, table }) => {
     const meta = table.options.meta;
-    const validRow = meta?.validRows[row.id];
-    const disableSubmit = validRow ? Object.values(validRow)?.some(item => !item) : false;
+    //const validRow = meta?.validRows[row.id];
+    //const disableSubmit = validRow ? Object.values(validRow)?.some(item => !item) : false;
 
     const setEditedRows = (e: React.MouseEvent<HTMLButtonElement>) => {
-        const elName = e.currentTarget.name
+        const elName = e.currentTarget.name;
         meta?.setEditedRows((old: []) => ({
             ...old,
             [row.id]: !old[row.id],
-        }))
+        }));
 
         if (elName !== "edit") {
-            meta?.revertData(row.index, e.currentTarget.name === "cancel")
+            e.currentTarget.name === "cancel" ? meta?.revertData(row.index) : meta?.updateRow(row.index);
         }
-    }
+    };
 
     return meta?.editedRows[row.id] ? (
         <>
             <button onClick={setEditedRows} name="cancel">
                 X
             </button>{" "}
-            <button onClick={setEditedRows} name="done" disabled={disableSubmit}>
+            <button onClick={setEditedRows} name="done">
                 ✔
             </button>
         </>
@@ -95,131 +83,69 @@ const TableCell = ({ getValue, row, column, table }) => {
 
 const columnHelper = createColumnHelper<Record>();
 
-const columns = [
-    columnHelper.accessor("Date", {
-        header: "Date",
-        cell: TableCell,
-        meta: {
-            type: "date",
-            required: true,
-        }
-    }),
-    columnHelper.accessor("Number", {
-        header: "Number",
-        cell: TableCell,
-        meta: {
-            type: "number",
-            required: false,
-        }
-    }),
-    columnHelper.accessor("Payee", {
-        header: "Payee",
-        cell: TableCell,
-        meta: {
-            type: "text",
-            required: false,
-        }
-    }),
-    columnHelper.accessor("Account", {
-        header: "Account",
-        cell: TableCell,
-        meta: {
-            type: "select",
-            options: options.map((item) => ({ value: item, label: item })),
-            required: false,
-        }
-    }),
-    columnHelper.accessor("Amount", {
-        header: "Amount",
-        cell: TableCell,
-        meta: {
-            type: "number",
-            required: false,
-        }
-    }),
-    columnHelper.accessor("Description", {
-        header: "Description",
-        cell: TableCell,
-        meta: {
-            type: "text",
-            required: true,
-        }
-    }),
-    columnHelper.display({
-        id: "edit",
-        cell: EditCell
-    })
-];
-
-export default function TableData({ data, setData, COAoptions }) {
-    useEffect(() => {
-        options = COAoptions;
-        console.log('Global variable:', options);
-    }, [COAoptions]);
-    // const [dataFrame, setDataFrame] = useState<Record[]>();
-
-    // setDataFrame((_dataFrame) => data)
-
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         // fetch pandas dataframe from backend
-    //         const response = await fetch(`api/dataTable`, { credentials: 'include' })
-    //         const result = await response.json()
-    //         const x = JSON.parse(result)
-    //         console.log(x)
-    //         setDataFrame((_dataFrame) => x)
-
-    //         console.log("fhwo: " + Array.isArray([x]))
-    //     }
-
-    //     fetchData();
-
-    // }, []);
-
-    return (data && <TableUnstyled data={data} setData={setData} />)
-}
-
-function TableUnstyled({ data, setData }) {
-    // const { dataFrame } = props
-    // // const navigate = useNavigate();
-    // const [data, setData] = useState(() => [...dataFrame])
-    const [originalData, setOriginalData] = useState(() => [...data]);
+export default function TableUnstyled({ data, setData, optionsList, updateRow }) {
+    const originalData = data;
+    let options: Option[];
+    options = optionsList.map((item) => ({ value: item, label: item }))
     const [editedRows, setEditedRows] = useState({});
     const [validRows, setValidRows] = useState({});
-
-    // const handleExport = async () => {
-    //     // send updated data to backend
-    //     const response = await fetch(`api/export`, { method: "POST", headers: { "Content-Type": "application/json", }, body: JSON.stringify(data), credentials: 'include' })
-    //     if (!response.ok) {
-    //         // error
-    //         console.log("error")
-    //     }
-    //     else {
-    //         try {
-    //             // const response = await fetch('/download_excel');
-    //             const blob = await response.blob();
-    //             const url = window.URL.createObjectURL(blob);
-    //             const link = document.createElement('a');
-    //             link.href = url;
-    //             link.setAttribute('download', 'labeledData.xlsx');
-    //             document.body.appendChild(link);
-    //             link.click();
-    //             navigate("/download")
-    //         } catch (error) {
-    //             console.error('Error downloading file:', error);
-    //         }
-
-    //         // transfer to other page
-    //         // const rep =  await response.json();
-    //         // const filename = rep["filename"];
-    //         // const state = { file: filename };
-    //         // navigate("/download")
-    //         // console.log(filename);
-    //         // <Navigate to={`/download`} state={filename} replace={true} />
-    //     }
-    // }
-
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+
+    const columns = [
+        columnHelper.accessor("Date", {
+            header: "Date",
+            cell: TableCell,
+            meta: {
+                type: "date",
+                required: true,
+            }
+        }),
+        columnHelper.accessor("Number", {
+            header: "Number",
+            cell: TableCell,
+            meta: {
+                type: "number",
+                required: false,
+            }
+        }),
+        columnHelper.accessor("Payee", {
+            header: "Payee",
+            cell: TableCell,
+            meta: {
+                type: "text",
+                required: false,
+            }
+        }),
+        columnHelper.accessor("Account", {
+            header: "Account",
+            cell: TableCell,
+            meta: {
+                type: "select",
+                options: options,
+                required: true,
+            }
+        }),
+        columnHelper.accessor("Amount", {
+            header: "Amount",
+            cell: TableCell,
+            meta: {
+                type: "number",
+                required: false,
+            }
+        }),
+        columnHelper.accessor("Description", {
+            header: "Description",
+            cell: TableCell,
+            meta: {
+                type: "text",
+                required: true,
+            }
+        }),
+        columnHelper.display({
+            id: "edit",
+            cell: EditCell
+        })
+    ];
 
     const table = useReactTable({
         data,
@@ -232,19 +158,13 @@ function TableUnstyled({ data, setData }) {
             setValidRows,
             editedRows,
             setEditedRows,
-            revertData: (rowIndex: number, revert: boolean) => {
-                if (revert) {
-                    skipAutoResetPageIndex()
-                    setData((old) =>
-                        old.map((row, index) =>
-                            index === rowIndex ? originalData[rowIndex] : row
-                        )
-                    );
-                } else {
-                    setOriginalData((old) =>
-                        old.map((row, index) => (index === rowIndex ? data[rowIndex] : row))
-                    );
-                }
+            revertData: (rowIndex: number) => {
+                skipAutoResetPageIndex()
+                setData((old) =>
+                    old.map((row, index) =>
+                        index === rowIndex ? originalData[rowIndex] : row
+                    )
+                );
             },
             updateData: (rowIndex: number, columnId: string, value: string, isValid: boolean) => {
                 skipAutoResetPageIndex()
@@ -264,6 +184,10 @@ function TableUnstyled({ data, setData }) {
                     [rowIndex]: { ...old[rowIndex], [columnId]: isValid },
                 }));
             },
+            updateRow: (rowIndex: number) => {
+                console.log(data[rowIndex].index);
+                updateRow(data[rowIndex].index, data[rowIndex])
+            }
         },
     });
 
@@ -376,44 +300,6 @@ function TableUnstyled({ data, setData }) {
         </>
     );
 }
-
-// function Row(props: any) {
-//     const { item } = props;
-
-//     // const data = Object.keys(item)
-//     return (
-//         <tr>
-//             <td>{item.Date}</td>
-//         </tr>
-//     )
-// }
-
-// const CustomPaginationComponent = (props: any) => {
-//     const { page, rowsPerPage, count, onPageChange } = props;
-//     let from = rowsPerPage * page + 1;
-//     let to = rowsPerPage * (page + 1);
-//     if (to > count) {
-//         to = count;
-//     }
-//     return (
-//         <td>
-//             <div style={{ display: 'flex', justifyContent: 'center' }}>
-//                 <div>
-//                     <button disabled={page === 0} onClick={(e) => onPageChange(e, page - 1)}>Prev</button>
-//                 </div>
-
-//                 <div>
-//                     <h4>
-//                         {from}-{to} of {count} transactions
-//                     </h4>
-//                 </div>
-//                 <div>
-//                     <button disabled={to >= count} onClick={(e) => onPageChange(e, page + 1)}>Next</button>
-//                 </div>
-//             </div>
-//         </td>
-//     );
-// }
 
 function useSkipper(): [any, any] {
     const shouldSkipRef = useRef(true)

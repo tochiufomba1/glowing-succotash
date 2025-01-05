@@ -8,6 +8,7 @@ import { Record } from './Types';
 import { SummaryRecord } from './Types';
 import UploadButton from './UploadButton';
 import { useNavigate } from "react-router-dom";
+import useRecords from './useRecords';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -39,8 +40,9 @@ function a11yProps(index: number) {
 }
 
 export default function PanelParent() {
-    const [dataFrame, setDataFrame] = useState<Record[]>();
-    const [dataFrame2, setDataFrame2] = useState<SummaryRecord[]>();
+    const { data: originalData, isValidating, updateSummaryRow, updateTableRow } = useRecords();
+    const [dataFrame, setDataFrame] = useState<Record[]>([]);
+    const [dataFrame2, setDataFrame2] = useState<SummaryRecord[]>([]);
     const [options, setOptions] = useState<string[]>([]);
     const [value, setValue] = useState(0);
 
@@ -79,42 +81,59 @@ export default function PanelParent() {
     }
 
     useEffect(() => {
-        const fetchData = async () => {
-            // fetch pandas dataframe from backend
-            const response = await fetch(`api/dataTable`, { credentials: 'include' })
-            const result = await response.json()
-            // console.log(result)
-            let x = JSON.parse(result.table)
-            let y = JSON.parse(result.summary)
-            let z = JSON.parse(result.options)
-            console.log(z)
-            setDataFrame((_dataFrame) => x)
-            setDataFrame2((_dataFrame2) => y)
-            setOptions((_options) => z)
-            // console.log("fhwo: " + Array.isArray([x]))
+        if (isValidating) {
+            console.log("here1");
+            return;
         }
 
-        fetchData();
+        setDataFrame((_dataFrame) => originalData["table"])
+        setDataFrame2((_dataFrame2) => originalData["summary"])
+        setOptions((_options) => originalData["options"])
+        // console.log(originalData)
 
-    }, []);
+    }, [isValidating]);
 
-    return (
-        <>
-            <Box sx={{ width: '100%' }}>
-                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-                        <Tab label="Table" {...a11yProps(0)} />
-                        <Tab label="Summary" {...a11yProps(1)} />
-                        <UploadButton handleExport={handleExport} />
-                    </Tabs>
+    if (dataFrame && dataFrame2 && options) {
+        console.log("done")
+        console.log(dataFrame)
+        return (
+            <>
+                <Box sx={{ width: '100%' }}>
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                        <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
+                            <Tab label="Table" {...a11yProps(0)} />
+                            <Tab label="Summary" {...a11yProps(1)} />
+                            <UploadButton handleExport={handleExport} />
+                        </Tabs>
+                    </Box>
+                    <CustomTabPanel value={value} index={0}>
+                        <TableView data={dataFrame} setData={setDataFrame} optionsList={options} updateRow={updateTableRow} />
+                    </CustomTabPanel>
+                    <CustomTabPanel value={value} index={1}>
+                        <SummaryView data={dataFrame2} setData={setDataFrame2} optionsList={options} updateRow={updateSummaryRow} />
+                    </CustomTabPanel>
                 </Box>
-                <CustomTabPanel value={value} index={0}>
-                    <TableView data={dataFrame} setData={setDataFrame} COAoptions={options}  />
-                </CustomTabPanel>
-                <CustomTabPanel value={value} index={1}>
-                    <SummaryView data={dataFrame2} setData={setDataFrame2} COAoptions={options} />
-                </CustomTabPanel>
-            </Box>
-        </>
-    )
+            </>
+        )
+    }
+
+    // return (isValidating == false &&
+    //     <>
+    //         <Box sx={{ width: '100%' }}>
+    //             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+    //                 <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
+    //                     <Tab label="Table" {...a11yProps(0)} />
+    //                     <Tab label="Summary" {...a11yProps(1)} />
+    //                     <UploadButton handleExport={handleExport} />
+    //                 </Tabs>
+    //             </Box>
+    //             <CustomTabPanel value={value} index={0}>
+    //                 <TableView data={dataFrame} setData={setDataFrame} />
+    //             </CustomTabPanel>
+    //             <CustomTabPanel value={value} index={1}>
+    //                 <SummaryView data={dataFrame2} setData={setDataFrame2} />
+    //             </CustomTabPanel>
+    //         </Box>
+    //     </>
+    // )
 }

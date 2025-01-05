@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import "../TableView.css"
-import {Option} from "../Types.ts"
-import { SummaryRecord } from "../Types.ts"
-
+import { SummaryRecord, Option } from "../Types.ts"
 import {
     createColumnHelper,
     flexRender,
@@ -11,10 +9,9 @@ import {
     getPaginationRowModel,
 } from '@tanstack/react-table'
 
-let options = []
-
 const EditCell = ({ row, table }) => {
-    const meta = table.options.meta
+    const meta = table.options.meta;
+
     const setEditedRows = (e: React.MouseEvent<HTMLButtonElement>) => {
         const elName = e.currentTarget.name
         meta?.setEditedRows((old: []) => ({
@@ -22,9 +19,10 @@ const EditCell = ({ row, table }) => {
             [row.id]: !old[row.id],
         }))
         if (elName !== "edit") {
-            meta?.revertData(row.index, e.currentTarget.name === "cancel")
+            e.currentTarget.name === "cancel" ? meta?.revertData(row.index) : meta?.updateRow(row.index);
         }
-    }
+    };
+
     return meta?.editedRows[row.id] ? (
         <>
             <button onClick={setEditedRows} name="cancel">
@@ -82,43 +80,37 @@ const TableCell = ({ getValue, row, column, table }) => {
 
 const columnHelper = createColumnHelper<SummaryRecord>();
 
-const columns = [
-    columnHelper.accessor("Description", {
-        header: "Description",
-        cell: TableCell,
-        meta: {
-            type: "text",
-            required: true,
-        }
-    }),
-    columnHelper.accessor("Account", {
-        header: "Account",
-        cell: TableCell,
-        meta: {
-            type: "select",
-            options: options.map((item) => ({ value: item, label: item })),
-            required: false,
-        }
-    }),
-    columnHelper.display({
-        id: "edit",
-        cell: EditCell,
-    }),
-];
-
-export default function SummaryView({ data, setData, COAoptions }) {
-    options = COAoptions
-
-    return (data && options.length > 0 && <TableUnstyled data={data} setData={setData} />)
-}
-
-function TableUnstyled({data, setData}) {
-    // const { dataFrame } = props
-    // const [data, setData] = useState(() => [...dataFrame])
-    const [originalData, setOriginalData] = useState(() => [...data]);
+export default function TableUnstyled({ data, setData, optionsList, updateRow }) {
+    const originalData = data;
+    let options: Option[];
+    options = optionsList.map((item) => ({ value: item, label: item }))
     const [editedRows, setEditedRows] = useState({});
     const [validRows, setValidRows] = useState({});
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+
+    const columns = [
+        columnHelper.accessor("Description", {
+            header: "Description",
+            cell: TableCell,
+            meta: {
+                type: "text",
+                required: true,
+            }
+        }),
+        columnHelper.accessor("Account", {
+            header: "Account",
+            cell: TableCell,
+            meta: {
+                type: "select",
+                options: options,
+                required: false,
+            }
+        }),
+        columnHelper.display({
+            id: "edit",
+            cell: EditCell,
+        }),
+    ];
 
     const table = useReactTable({
         data,
@@ -131,19 +123,18 @@ function TableUnstyled({data, setData}) {
             setValidRows,
             editedRows,
             setEditedRows,
-            revertData: (rowIndex: number, revert: boolean) => {
-                if (revert) {
-                    skipAutoResetPageIndex()
-                    setData((old) =>
-                        old.map((row, index) =>
-                            index === rowIndex ? originalData[rowIndex] : row
-                        )
-                    );
-                } else {
-                    setOriginalData((old) =>
-                        old.map((row, index) => (index === rowIndex ? data[rowIndex] : row))
-                    );
-                }
+            revertData: (rowIndex: number) => {
+                skipAutoResetPageIndex()
+                setData((old) =>
+                    old.map((row, index) =>
+                        index === rowIndex ? originalData[rowIndex] : row
+                    )
+                );
+            },
+            updateRow: (rowIndex: number) => {
+                console.log(rowIndex)
+                console.log(JSON.stringify(data[rowIndex]))
+                updateRow(rowIndex, data[rowIndex])
             },
             updateData: (rowIndex: number, columnId: string, value: string, isValid: boolean) => {
                 skipAutoResetPageIndex()

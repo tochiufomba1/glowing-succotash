@@ -7,28 +7,28 @@ DROP TABLE IF EXISTS nucareCOA;
 
 CREATE TABLE businesses(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    "name" TEXT NOT NULL
+    name TEXT NOT NULL
 );
 
 CREATE TABLE newKnowledge(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    descr TEXT NOT NULL,
+    description TEXT NOT NULL,
     account TEXT NOT NULL
 );
 
 CREATE TABLE foreverYoung(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    descr	TEXT NOT NULL,
+    description	TEXT NOT NULL,
     account	TEXT NOT NULL
 );
 
 CREATE TABLE nucare(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    descr	TEXT NOT NULL,
+    description	TEXT NOT NULL,
     account	TEXT NOT NULL
 );
 
 CREATE TABLE nucareCOA(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    descr	TEXT NOT NULL
+    description	TEXT NOT NULL
 )
