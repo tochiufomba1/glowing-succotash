@@ -23,8 +23,8 @@ from nltk.tokenize import word_tokenize
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 
-app = Flask(__name__, template_folder="../frontend/dist", static_url_path='/static', static_folder='../frontend/dist/static')
-app.config.from_pyfile('config.py')
+app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
+app.config.from_pyfile('./backend/config.py')
 app.config["SESSION_REDIS"] = redis.from_url('redis://127.0.0.1:6379')
 CORS(app, supports_credentials=True)
 Session(app)
@@ -57,9 +57,9 @@ def classify(uploadFolder,filename, business):
     loaded = False
     if not loaded:
         if business == "Nucare":
-            vectorizer, classifier = load('./data/categorizer2.joblib')
+            vectorizer, classifier = load('./backend/data/categorizer2.joblib')
         else:
-            vectorizer, classifier = load('./data/categorizer.joblib')
+            vectorizer, classifier = load('./backend/data/categorizer.joblib')
 
         loaded = True
 
