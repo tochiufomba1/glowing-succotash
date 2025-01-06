@@ -200,7 +200,7 @@ def recordDifferences(oldData, newData):
             final_df.to_sql(lower(session.get('business')), conn, index=False, if_exists = 'append')
         except Exception as e:
             print("Failed operation")
-            
+
         conn.close()
         
         # execute script to retrain model
@@ -274,3 +274,6 @@ def updatSummaryTable(id):
 # app.add_url_rule(
 #     "/api/export", endpoint="data", build_only=True
 # )
+
+if __name__ == '__main__':
+    app.run()
