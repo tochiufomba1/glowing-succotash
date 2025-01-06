@@ -100,7 +100,7 @@ def classify(uploadFolder,filename, business):
     return inputData, interactData, summaryPage
 
 def createTable(business, filename):
-    OrigDF, BertDF, summaryPage = classify(app.config['UPLOAD_FOLDER'], filename, business)
+    OrigDF, BertDF, summaryPage = classify(os.environ.get("UPLOAD_FOLDER"), filename, business)
     session['data'] = pickle.dumps(OrigDF)
     session['bertDescriptions'] = pickle.dumps(BertDF)
 
@@ -131,7 +131,7 @@ def upload_file():
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file.save(os.path.join(os.environ.get("UPLOAD_FOLDER"), filename))
         createTable(business,filename)
         return "Success"
 
