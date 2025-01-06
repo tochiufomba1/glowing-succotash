@@ -192,8 +192,8 @@ def recordDifferences(oldData, newData):
     # user didn't find any
     if(final_df.shape[0] != 0):
         # write dataframe of differences to database
-        print("final")
-        print(final_df)
+        # print("final")
+        # print(final_df)
 
         conn = sqlite3.connect('database.db')
         try:
@@ -223,7 +223,8 @@ def export():
     recordDifferences(oldFrame, df_itemized)
 
     # Create excel file
-    df_itemized.drop(columns=['index'])
+    df_itemized = df_itemized[['Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
+    # df_itemized.drop(columns=['index'])
     excel_file = io.BytesIO()
     df_itemized.to_excel(excel_file, index=False)
     excel_file.seek(0)
@@ -276,4 +277,7 @@ def updatSummaryTable(id):
 # )
 
 if __name__ == '__main__':
+    with open("./backend/init_db.py", "r") as f:
+        script_code = f.read()
+    exec(script_code)
     app.run()
