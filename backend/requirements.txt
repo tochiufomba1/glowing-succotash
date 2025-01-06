@@ -10,6 +10,7 @@ Flask==3.0.3
 Flask-Cors==5.0.0
 Flask-Session==0.8.0
 fsspec==2024.10.0
+gunicorn==23.0.0
 huggingface-hub==0.26.2
 idna==3.10
 itsdangerous==2.2.0
@@ -38,6 +39,7 @@ packaging==24.2
 pandas==2.2.3
 pillow==11.0.0
 python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
 pytz==2024.2
 PyYAML==6.0.2
 redis==5.2.0
