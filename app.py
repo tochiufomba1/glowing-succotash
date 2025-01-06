@@ -25,7 +25,7 @@ ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 # app.config.from_pyfile('./backend/config.py')
-app.config["SESSION_REDIS"] = redis.from_url('redis://127.0.0.1:6379')
+app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
 CORS(app, supports_credentials=True)
 Session(app)
 
