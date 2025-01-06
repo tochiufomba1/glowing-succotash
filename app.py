@@ -245,9 +245,13 @@ def updateTable(id):
     df_itemized = pickle.loads(itemizedUnloaded)
     df_itemized.iloc[id, 4] = data['Account']
     session['bertDescriptions'] = pickle.dumps(df_itemized)
-    print(data)
 
-    return "Success"
+    dataw = {
+        'message': 'Hello, world!',
+        'number': 42
+    }
+    
+    return jsonify(dataw)
 
 # app.add_url_rule(
 #     "/api/export", endpoint="data", build_only=True
@@ -269,8 +273,12 @@ def updatSummaryTable(id):
     df_itemized.loc[df_itemized['Description'] == data['Description'], ['Account']] = data['Account']
     session['bertDescriptions'] = pickle.dumps(df_itemized)
     
-    # print(data)
-    return "Success"
+    dataw = {
+        'message': 'Hello, world!',
+        'number': 42
+    }
+    
+    return jsonify(dataw)
 
 # app.add_url_rule(
 #     "/api/export", endpoint="data", build_only=True
