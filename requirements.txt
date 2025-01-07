@@ -6,6 +6,8 @@ et_xmlfile==2.0.0
 Flask==3.1.0
 Flask-Cors==5.0.0
 Flask-Session==0.8.0
+Flask-SQLAlchemy==3.1.1
+greenlet==3.1.1
 gunicorn==23.0.0
 itsdangerous==2.2.0
 Jinja2==3.1.5
@@ -17,6 +19,7 @@ numpy==2.2.1
 openpyxl==3.1.5
 packaging==24.2
 pandas==2.2.3
+psycopg2==2.9.10
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.2
@@ -25,7 +28,9 @@ regex==2024.11.6
 scikit-learn==1.5.2
 scipy==1.15.0
 six==1.17.0
+SQLAlchemy==2.0.36
 threadpoolctl==3.5.0
 tqdm==4.67.1
+typing_extensions==4.12.2
 tzdata==2024.2
 Werkzeug==3.1.3

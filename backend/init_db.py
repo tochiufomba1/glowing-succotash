@@ -5,7 +5,7 @@ df1 = pd.read_excel("./backend/static/nucareCOA.xlsx")
 conn = sqlite3.connect('database.db')
 
 try:
-    with open('schema.sql') as f:
+    with open('/backend/schema.sql') as f:
         conn.executescript(f.read())     
 except FileNotFoundError: 
      print("The file 'schema.sql' was not found.")    

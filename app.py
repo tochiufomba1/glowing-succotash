@@ -15,6 +15,8 @@ import re
 import numpy as np 
 import sqlite3
 from urllib.parse import urlparse
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
 
 #NLP toolkits
 import nltk
@@ -31,8 +33,59 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
 # redis.from_url(os.environ.get("REDIS_URL"))
 app.config["SESSION_REDIS"] = r
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+engine
 CORS(app, supports_credentials=True)
 Session(app)
+
+db = SQLAlchemy(app)
+class Business(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return '<Business %r>' % self.title
+
+class NewKnowledge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.Text, nullable=False)
+    account = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return '<NewKnowledge %r>' % self.title
+
+class ForeverYoung(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.Text, nullable=False)
+    account = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return '<ForeverYoung %r>' % self.title
+    
+class Nucare(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.Text, nullable=False)
+    account = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return '<Nucare %r>' % self.title
+
+class NucareCOA(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return '<NucareCOA %r>' % self.title
+
+with app.app_context():
+    db.create_all()
+    df1 = pd.read_excel("./backend/static/nucareCOA.xlsx")
+
+    try:
+        df1.to_sql('NucareCOA', con=engine, if_exists='replace', index=False)
+    except Exception as e:
+        print("error with data initialization")
+
 # app.config.from_pyfile('./backend/config.py')
 # app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
 # CORS(app, supports_credentials=True)
@@ -154,15 +207,25 @@ def data():
     df_pickled = session.get('bertDescriptions', None)
     df_summary = session.get('summaryPage', None)
 
-    # collect chart of account options for given business
-    conn = sqlite3.connect('database.db')
-    cur = conn.cursor()
+    # TODO: collect chart of account options for given business
+    meta_data = db.MetaData()
+    meta_data.reflect(bind=engine)
+    NCOA = meta_data.tables['NucareCOA']
+    query = db.select(
+        NCOA.c.description,
+    )
 
-    res = cur.execute("SELECT * FROM nucareCOA")
+    nucareCOA = engine.execute(query).fetchall()
 
-    nucareCOA = [str(row[0]) for row in res]
+    # nucareCOA = NucareCOA.query.all()
+    #conn = sqlite3.connect('database.db')
+    #cur = conn.cursor()
 
-    conn.close()
+    #res = cur.execute("SELECT * FROM nucareCOA")
+
+    #nucareCOA = [str(row[0]) for row in res]
+
+    #conn.close()
 
     # convert to JSON and send to frontend
     if df_pickled and df_summary and nucareCOA:
@@ -186,6 +249,11 @@ app.add_url_rule(
     "/api/dataTable", endpoint="data", build_only=True
 )
 
+def add_row(row):
+    newData = Nucare(description=row['Description'], account=row['Account'])
+    db.session.add(newData)
+    db.session.commit()
+
 def recordDifferences(oldData, newData):
     # oldData['Date'] = oldData['Date'].astype(str)
     # newData['Date'] = newData['Date'].astype(str)
@@ -198,21 +266,13 @@ def recordDifferences(oldData, newData):
     final_df.drop(columns=['_merge', 'index'])
     final_df = final_df[['Description', 'Account']]
    
-    # user didn't find any
+    # TODO: Handle differences
     if(final_df.shape[0] != 0):
-        # write dataframe of differences to database
-        # print("final")
-        # print(final_df)
-
-        conn = sqlite3.connect('database.db')
-        try:
-            final_df.to_sql(lower(session.get('business')), conn, index=False, if_exists = 'append')
-        except Exception as e:
-            print("Failed operation")
-
-        conn.close()
+        print("not done")
+        # final_df.apply(add_row, axis=1)
         
         # execute script to retrain model
+
     return
 
 @app.route('/api/export', methods=['POST'])
@@ -229,7 +289,7 @@ def export():
     df_itemized['Description'] = oldFrame['Description'].values
 
     # Update database
-    recordDifferences(oldFrame, df_itemized)
+    #recordDifferences(oldFrame, df_itemized)
 
     # Create excel file
     df_itemized = df_itemized[['Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
