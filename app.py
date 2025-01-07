@@ -297,7 +297,6 @@ if __name__ == '__main__':
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE")
     app.config["SESSION_USE_SIGNER"] = os.environ.get("SESSION_USE_SIGNER")
 
-    app.config.from_pyfile('./backend/config.py')
     CORS(app, supports_credentials=True)
     Session(app)
     app.run(debug=False, host='0.0.0.0', port=port)
