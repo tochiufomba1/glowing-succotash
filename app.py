@@ -14,6 +14,7 @@ from joblib import dump, load
 import re
 import numpy as np 
 import sqlite3
+from urllib.parse import urlparse
 
 #NLP toolkits
 import nltk
@@ -22,11 +23,14 @@ nltk.download('punkt_tab')
 from nltk.tokenize import word_tokenize
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
+url = urlparse(os.environ.get("REDIS_URL"))
+r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
 
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
-app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
+# redis.from_url(os.environ.get("REDIS_URL"))
+app.config["SESSION_REDIS"] = r
 CORS(app, supports_credentials=True)
 Session(app)
 # app.config.from_pyfile('./backend/config.py')
