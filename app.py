@@ -25,6 +25,10 @@ ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
+app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
+CORS(app, supports_credentials=True)
+Session(app)
 # app.config.from_pyfile('./backend/config.py')
 # app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
 # CORS(app, supports_credentials=True)
@@ -290,13 +294,8 @@ if __name__ == '__main__':
         script_code = f.read()
     exec(script_code)
     port = int(os.environ.get("PORT", 5000))
-    app.config["SESSION_TYPE"] = 'redis'
-    app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
     app.config["SESSION_COOKIE_HTTPONLY"] = os.environ.get("SESSION_COOKIE_HTTPONLY")
     app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE")
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE")
     app.config["SESSION_USE_SIGNER"] = os.environ.get("SESSION_USE_SIGNER")
-
-    CORS(app, supports_credentials=True)
-    Session(app)
     app.run(debug=False, host='0.0.0.0', port=port)
