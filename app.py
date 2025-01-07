@@ -34,7 +34,7 @@ app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
 # redis.from_url(os.environ.get("REDIS_URL"))
 app.config["SESSION_REDIS"] = r
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-engine
+engine = os.environ.get("DATABASE_URL")
 CORS(app, supports_credentials=True)
 Session(app)
 
