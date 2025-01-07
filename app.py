@@ -13,7 +13,6 @@ import io
 from joblib import dump, load
 import re
 import numpy as np 
-import sqlite3
 from urllib.parse import urlparse
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
@@ -77,14 +76,14 @@ class NucareCOA(db.Model):
     def __repr__(self):
         return '<NucareCOA %r>' % self.title
 
-with app.app_context():
-    db.create_all()
-    df1 = pd.read_excel("./backend/static/nucareCOA.xlsx")
+# with app.app_context():
+#     db.create_all()
+#     df1 = pd.read_excel("./backend/static/nucareCOA.xlsx")
 
-    try:
-        df1.to_sql('NucareCOA', con=engine, if_exists='replace', index=False)
-    except Exception as e:
-        print("error with data initialization")
+#     try:
+#         df1.to_sql('NucareCOA', con=engine, if_exists='replace', index=False)
+#     except Exception as e:
+#         print("error with data initialization")
 
 # app.config.from_pyfile('./backend/config.py')
 # app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
@@ -226,7 +225,7 @@ def data():
     #nucareCOA = [str(row[0]) for row in res]
 
     #conn.close()
-
+    
     # convert to JSON and send to frontend
     if df_pickled and df_summary and nucareCOA:
         # df = pickle.loads(SESSION_REDIS.get(df_id))
@@ -236,6 +235,9 @@ def data():
         df_json2 = df2.to_json(orient='records')
 
         optionsJSON = json.dumps(nucareCOA)
+
+        print(df)
+        print(nucareCOA)
 
         return jsonify({'table': df_json, 'summary': df_json2, 'options': optionsJSON})
     else:
