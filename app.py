@@ -33,8 +33,8 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
 # redis.from_url(os.environ.get("REDIS_URL"))
 app.config["SESSION_REDIS"] = r
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-engine = os.environ.get("DATABASE_URL")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://")
+engine = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://")
 CORS(app, supports_credentials=True)
 Session(app)
 
