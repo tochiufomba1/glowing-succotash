@@ -14,14 +14,7 @@ from joblib import dump, load
 import re
 import numpy as np 
 from urllib.parse import urlparse
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine
-
-#NLP toolkits
-import nltk
-nltk.download('punkt')
-nltk.download('punkt_tab')
-from nltk.tokenize import word_tokenize
+import psycopg2
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 url = urlparse(os.environ.get("REDIS_URL"))
@@ -30,65 +23,13 @@ r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(ur
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
-# redis.from_url(os.environ.get("REDIS_URL"))
 app.config["SESSION_REDIS"] = r
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://")
-engine = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://")
 CORS(app, supports_credentials=True)
 Session(app)
 
-db = SQLAlchemy(app)
-class Business(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Text, nullable=False)
+DATABASE_URL = os.environ['DATABASE_URL']
 
-    def __repr__(self):
-        return '<Business %r>' % self.title
-
-class NewKnowledge(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.Text, nullable=False)
-    account = db.Column(db.Text, nullable=False)
-
-    def __repr__(self):
-        return '<NewKnowledge %r>' % self.title
-
-class ForeverYoung(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.Text, nullable=False)
-    account = db.Column(db.Text, nullable=False)
-
-    def __repr__(self):
-        return '<ForeverYoung %r>' % self.title
-    
-class Nucare(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.Text, nullable=False)
-    account = db.Column(db.Text, nullable=False)
-
-    def __repr__(self):
-        return '<Nucare %r>' % self.title
-
-class NucareCOA(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.Text, nullable=False)
-
-    def __repr__(self):
-        return '<NucareCOA %r>' % self.title
-
-# with app.app_context():
-#     db.create_all()
-#     df1 = pd.read_excel("./backend/static/nucareCOA.xlsx")
-
-#     try:
-#         df1.to_sql('NucareCOA', con=engine, if_exists='replace', index=False)
-#     except Exception as e:
-#         print("error with data initialization")
-
-# app.config.from_pyfile('./backend/config.py')
-# app.config["SESSION_REDIS"] = redis.from_url(os.environ.get("REDIS_URL"))
-# CORS(app, supports_credentials=True)
-# Session(app)
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 
 @app.route("/")
 def index():
@@ -97,20 +38,6 @@ def index():
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Preprocess transaction description data from user-provided file
-def clean_text_BERT(text):
-    # Convert words to lower case.
-    text = text.lower()
-
-    # Remove special characters and numbers. This also removes the dates 
-    # which are not important in classifying expenses
-    text = re.sub(r'[^\w\s]|https?://\S+|www\.\S+|https?:/\S+|[^\x00-\x7F]+|zelle payment to |DEBIT PURCHASE -VISA|\d+', '', str(text).strip())
-  
-    # Tokenise 
-    text_list = word_tokenize(text)
-    result = ' '.join(text_list)
-    return result
 
 def classify(uploadFolder,filename, business):
     global loaded, vectorizer, classifier
@@ -134,7 +61,7 @@ def classify(uploadFolder,filename, business):
     # remove special characters and short words from the input
     inputData.Description = inputData.Description.astype(str)
     text_test_raw = inputData['Description']
-    text_test_BERT = text_test_raw.apply(lambda x: clean_text_BERT(x))
+    text_test_BERT =  names = text_test_raw.str.lower().replace('[^\w\s]|https?://\S+|www\.\S+|https?:/\S+|[^\x00-\x7F]+|zelle payment to |DEBIT PURCHASE -VISA|\d+', ' ', regex=True)
 
     # classify data
     x = vectorizer.transform(text_test_BERT.values.astype('U')).toarray()
@@ -161,7 +88,7 @@ def classify(uploadFolder,filename, business):
     return inputData, interactData, summaryPage
 
 def createTable(business, filename):
-    OrigDF, BertDF, summaryPage = classify(os.environ.get("UPLOAD_FOLDER"), filename, business)
+    OrigDF, BertDF, summaryPage = classify(app.config['UPLOAD_FOLDER'], filename, business)
     session['data'] = pickle.dumps(OrigDF)
     session['bertDescriptions'] = pickle.dumps(BertDF)
 
@@ -192,7 +119,7 @@ def upload_file():
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file.save(os.path.join(os.environ.get("UPLOAD_FOLDER"), filename))
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename)) # os.environ.get("UPLOAD_FOLDER")
         createTable(business,filename)
         return "Success"
 
@@ -206,38 +133,21 @@ def data():
     df_pickled = session.get('bertDescriptions', None)
     df_summary = session.get('summaryPage', None)
 
-    # TODO: collect chart of account options for given business
-    meta_data = db.MetaData()
-    meta_data.reflect(bind=engine)
-    NCOA = meta_data.tables['NucareCOA']
-    query = db.select(
-        NCOA.c.description,
-    )
-
-    nucareCOA = engine.execute(query).fetchall()
-
-    # nucareCOA = NucareCOA.query.all()
-    #conn = sqlite3.connect('database.db')
-    #cur = conn.cursor()
-
-    #res = cur.execute("SELECT * FROM nucareCOA")
-
-    #nucareCOA = [str(row[0]) for row in res]
-
-    #conn.close()
+    # collect chart of account options for given business
+    cur = conn.cursor()
+    cur.execute("SELECT description FROM nucareCOA")
+    res = cur.fetchall()
+    nucareCOA = [str(row[0]) for row in res]
+    cur.close()
     
     # convert to JSON and send to frontend
     if df_pickled and df_summary and nucareCOA:
-        # df = pickle.loads(SESSION_REDIS.get(df_id))
         df = pickle.loads(df_pickled)
         df_json = df.to_json(orient='records')
         df2 = pickle.loads(df_summary)
         df_json2 = df2.to_json(orient='records')
 
         optionsJSON = json.dumps(nucareCOA)
-
-        print(df)
-        print(nucareCOA)
 
         return jsonify({'table': df_json, 'summary': df_json2, 'options': optionsJSON})
     else:
@@ -252,14 +162,15 @@ app.add_url_rule(
 )
 
 def add_row(row):
-    newData = Nucare(description=row['Description'], account=row['Account'])
-    db.session.add(newData)
-    db.session.commit()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            sql.SQL("INSERT INTO {table} (description, account) VALUES (%s, %s)").format(table=sql.Identifier(session.get('business'))), [row['Description'],row['Account']]
+        )
+    except Exception as e:
+        print("couldn't add row")
 
 def recordDifferences(oldData, newData):
-    # oldData['Date'] = oldData['Date'].astype(str)
-    # newData['Date'] = newData['Date'].astype(str)
-    
     # find differences (rows that user updated in 'newData')
     merged_df = pd.merge(oldData, newData, how='right', indicator=True)
 
@@ -270,8 +181,7 @@ def recordDifferences(oldData, newData):
    
     # TODO: Handle differences
     if(final_df.shape[0] != 0):
-        print("not done")
-        # final_df.apply(add_row, axis=1)
+        final_df.apply(add_row, axis=1)
         
         # execute script to retrain model
 
@@ -356,10 +266,8 @@ def updatSummaryTable(id):
 # )
 
 if __name__ == '__main__':
-    with open("./backend/init_db.py", "r") as f:
-        script_code = f.read()
-    exec(script_code)
     port = int(os.environ.get("PORT", 5000))
+    app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER")
     app.config["SESSION_COOKIE_HTTPONLY"] = os.environ.get("SESSION_COOKIE_HTTPONLY")
     app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE")
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE")
