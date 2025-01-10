@@ -119,7 +119,7 @@ def upload_file():
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename)) # os.environ.get("UPLOAD_FOLDER")
+        file.save(os.path.join(os.environ.get("UPLOAD_FOLDER"), filename))
         createTable(business,filename)
         return "Success"
 
