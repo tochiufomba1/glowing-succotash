@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 // import TableData from './routes/TableView.tsx'
 import Upload, {action as uploadAction} from './routes/Upload.tsx';
-import DownloadView from './routes/DownloadView.tsx';
+import DownloadView2 from './routes/DownloadView2.tsx';
 import PanelParent from './PanelParent.tsx';
 
 const router = createBrowserRouter([
@@ -22,7 +22,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/download",
-    element: <DownloadView />
+    element: <DownloadView2 />
   }
 ]);
 

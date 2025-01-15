@@ -185,8 +185,8 @@ export default function TableUnstyled({ data, setData, optionsList, updateRow })
                 }));
             },
             updateRow: (rowIndex: number) => {
-                console.log(data[rowIndex].index);
-                updateRow(data[rowIndex].index, data[rowIndex])
+                //console.log(data[rowIndex].index);
+                updateRow(rowIndex, data[rowIndex])
             }
         },
     });

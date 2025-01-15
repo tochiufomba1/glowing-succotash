@@ -9,9 +9,11 @@ export type Record = {
 }
 
 export type SummaryRecord = {
-    index: number,
+    index: number;
     Description: string;
     Account: string;
+    Total: number;
+    Instances: number;
 }
 
 export type Option = {

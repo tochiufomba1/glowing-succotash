@@ -106,6 +106,22 @@ export default function TableUnstyled({ data, setData, optionsList, updateRow })
                 required: false,
             }
         }),
+        columnHelper.accessor("Total", {
+            header: "Total",
+            cell: TableCell,
+            meta: {
+                type: "number",
+                required: false,
+            }
+        }),
+        columnHelper.accessor("Instances", {
+            header: "Instances",
+            cell: TableCell,
+            meta: {
+                type: "number",
+                required: false,
+            }
+        }),
         columnHelper.display({
             id: "edit",
             cell: EditCell,
@@ -132,8 +148,8 @@ export default function TableUnstyled({ data, setData, optionsList, updateRow })
                 );
             },
             updateRow: (rowIndex: number) => {
-                console.log(rowIndex)
-                console.log(JSON.stringify(data[rowIndex]))
+                //console.log(rowIndex)
+                //console.log(JSON.stringify(data[rowIndex]))
                 updateRow(rowIndex, data[rowIndex])
             },
             updateData: (rowIndex: number, columnId: string, value: string, isValid: boolean) => {

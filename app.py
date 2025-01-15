@@ -1,34 +1,38 @@
 import os
-from flask import Flask, flash, request, redirect, url_for, send_from_directory, render_template, session, jsonify, send_file, make_response
+from flask import Flask, flash, request, redirect, url_for, send_from_directory, render_template, session, jsonify, send_file, make_response, abort
 from werkzeug.utils import secure_filename
 import pandas as pd
 from flask_cors import CORS
 import redis
+from rq import Queue
 import pickle
 import random
 import string
 import json
 from flask_session import Session
 import io
-from joblib import dump, load
 import re
 import numpy as np 
 from urllib.parse import urlparse
 import psycopg2
+from flask_compress import Compress
+import helpers
+from rq.job import Job
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 url = urlparse(os.environ.get("REDIS_URL"))
 r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
+q = Queue(connection=r) 
 
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
 app.config["SESSION_REDIS"] = r
+
 CORS(app, supports_credentials=True)
+Compress(app)
 Session(app)
-
 DATABASE_URL = os.environ['DATABASE_URL']
-
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 
 @app.route("/")
@@ -38,69 +42,6 @@ def index():
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def classify(uploadFolder,filename, business):
-    global loaded, vectorizer, classifier
-    
-    loaded = False
-    if not loaded:
-        if business == "Nucare":
-            vectorizer, classifier = load('./backend/data/categorizer2.joblib')
-        else:
-            vectorizer, classifier = load('./backend/data/categorizer.joblib')
-
-        loaded = True
-
-    # TODO: Add functionality for csv files
-    inputData = pd.read_excel(os.path.join(uploadFolder, filename))
-
-    # Transactions' description column title may change per bank, standardize column title to 'Description'
-    if 'Memo' in inputData.columns:
-        inputData.rename(columns={'Memo': 'Description'}, inplace=True)
-    
-    # remove special characters and short words from the input
-    inputData.Description = inputData.Description.astype(str)
-    text_test_raw = inputData['Description']
-    text_test_BERT =  names = text_test_raw.str.lower().replace('[^\w\s]|https?://\S+|www\.\S+|https?:/\S+|[^\x00-\x7F]+|zelle payment to |DEBIT PURCHASE -VISA|\d+', ' ', regex=True)
-
-    # classify data
-    x = vectorizer.transform(text_test_BERT.values.astype('U')).toarray()
-    categories = classifier.predict(x)
-
-    # add result to resulting dataframe
-    inputData.drop(columns=['Details', 'Type', 'Balance', "Num", "Adj", "Name"], errors='ignore')
-    inputData['Date'] = pd.to_datetime(inputData['Date'], format= '%Y-%m-%d', errors='coerce')
-    inputData['Date'] = inputData['Date'].astype(str) # REVIEW
-    inputData['Account'] = pd.Series(categories)
-    inputData['Number'] = ""
-    inputData['Payee'] = ""
-    inputData['Amount'] = ""
-    inputData = inputData[['Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
-
-    # add indices to rows for updates to data by users
-    inputData = inputData.reset_index()
-    
-    # tables to be sent to user (both use cleaned text)
-    interactData = inputData.copy()
-    interactData['Description'] = text_test_BERT
-    summaryPage = interactData.copy()
-
-    return inputData, interactData, summaryPage
-
-def createTable(business, filename):
-    OrigDF, BertDF, summaryPage = classify(os.environ.get("UPLOAD_FOLDER"), filename, business)
-    session['data'] = pickle.dumps(OrigDF)
-    session['bertDescriptions'] = pickle.dumps(BertDF)
-
-    #transformations of summary
-    summaryPage = summaryPage.drop_duplicates(subset=['Description', 'Account'], keep='first').copy()
-    summaryPage.drop(columns=['Date', 'Number', 'Payee', 'Amount',], errors='ignore')
-    summaryPage = summaryPage[['Description', 'Account']]
-    summaryPage = summaryPage.reset_index()
-
-    session['summaryPage'] = pickle.dumps(summaryPage)
-    session['filename'] = filename
-    session['business'] = business
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -120,7 +61,7 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(os.environ.get("UPLOAD_FOLDER"), filename))
-        createTable(business,filename)
+        helpers.createTable(session,business,filename)
         return "Success"
 
 app.add_url_rule(
@@ -187,35 +128,33 @@ def recordDifferences(oldData, newData):
 
     return
 
-@app.route('/api/export', methods=['POST'])
+@app.route('/api/export')
 def export():
-    # Get frame with the original descriptions
     df_pickled = session.get('data', None)
-    oldFrame = pickle.loads(df_pickled)
-
-    # Get frame that the user interacts with
     itemizedUnloaded = session.get('bertDescriptions', None)
-    df_itemized = pickle.loads(itemizedUnloaded)
-
-    # Place original descriptions in data user has interacted with
-    df_itemized['Description'] = oldFrame['Description'].values
-
-    # Update database
-    #recordDifferences(oldFrame, df_itemized)
-
-    # Create excel file
-    df_itemized = df_itemized[['Date', 'Number', 'Payee', 'Account', 'Amount', 'Description']]
-    # df_itemized.drop(columns=['index'])
-    excel_file = io.BytesIO()
-    df_itemized.to_excel(excel_file, index=False)
-    excel_file.seek(0)
-
-    return send_file(excel_file, as_attachment=True, download_name= session['filename'][:-5] + "_labeled" + ".xlsx")
-
+    job = q.enqueue(helpers.createExcelFile, df_pickled, itemizedUnloaded)
+    return jsonify({'job_id': job.id})
 
 app.add_url_rule(
     "/api/export", endpoint="data", build_only=True
 )
+
+@app.route('/api/export/<string:jobID>')
+def exportFile(jobID):
+    job = Job.fetch(id=jobID, connection=r)
+    status = job.get_status(refresh=True)
+    
+    if status == "finished":
+        result = job.latest_result()
+
+        if result.type == result.Type.SUCCESSFUL:
+            output = io.BytesIO(result.return_value)
+            helpers.deleteTmpFile(os.environ.get("UPLOAD_FOLDER"),session.get('filename'))
+            return send_file(output, as_attachment=True, download_name='labeledDatax.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        else:
+            abort(500)
+    else:
+        abort(500) # send more detailed response
 
 @app.route("/api/updateItem/<int:id>", methods=['PUT'])
 def updateTable(id):
@@ -224,7 +163,7 @@ def updateTable(id):
     # update itemized table
     itemizedUnloaded = session.get('bertDescriptions', None)
     df_itemized = pickle.loads(itemizedUnloaded)
-    df_itemized.iloc[id, 4] = data['Account']
+    df_itemized.iloc[id, 3] = data['Account']
     session['bertDescriptions'] = pickle.dumps(df_itemized)
 
     dataw = {
@@ -234,10 +173,6 @@ def updateTable(id):
     
     return jsonify(dataw)
 
-# app.add_url_rule(
-#     "/api/export", endpoint="data", build_only=True
-# )
-
 @app.route("/api/updateSummary/<int:id>", methods=['PUT'])
 def updatSummaryTable(id):
     data = request.get_json()
@@ -245,7 +180,7 @@ def updatSummaryTable(id):
     # update summary table
     summaryUnloaded = session.get('summaryPage', None)
     df_summary = pickle.loads(summaryUnloaded)
-    df_summary.iloc[id, 2] = data['Account']
+    df_summary.iloc[id, 1] = data['Account'] # REVIEW
     session['summaryPage'] = pickle.dumps(df_summary)
 
     # update itemized table
@@ -261,13 +196,13 @@ def updatSummaryTable(id):
     
     return jsonify(dataw)
 
-# app.add_url_rule(
-#     "/api/export", endpoint="data", build_only=True
-# )
+@app.route('/<path:path>')
+def static_proxy(path):
+    return send_from_directory(app.static_folder, path)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER")
+    #app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER")
     app.config["SESSION_COOKIE_HTTPONLY"] = os.environ.get("SESSION_COOKIE_HTTPONLY")
     app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE")
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE")
