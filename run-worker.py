@@ -1,7 +1,7 @@
 import os
 import redis
-from redis import Redis
-from rq import Queue, Connection
+from redis import Redis, Connection
+from rq import Queue
 from rq.worker import HerokuWorker as Worker
 
 

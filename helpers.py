@@ -27,7 +27,7 @@ def classify(uploadFolder,filename, business):
     # remove special characters and short words from the input
     inputData.Description = inputData.Description.astype(str)
     text_test_raw = inputData['Description']
-    text_test_BERT =  names = text_test_raw.str.lower().replace('[^\w\s]|https?://\S+|www\.\S+|https?:/\S+|[^\x00-\x7F]+|zelle payment to |DEBIT PURCHASE -VISA|\d+', ' ', regex=True)
+    text_test_BERT = text_test_raw.str.lower().replace(r'[^\w\s]|https?://\S+|www\.\S+|https?:/\S+|[^\x00-\x7F]+|zelle payment to |DEBIT PURCHASE -VISA|\d+', '', regex=True)
 
     # classify data
     x = vectorizer.transform(text_test_BERT.values.astype('U')).toarray()
