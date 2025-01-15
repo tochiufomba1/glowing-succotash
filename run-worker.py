@@ -13,8 +13,5 @@ if not redis_url:
     make sure its config var is named 'REDIS_URL'.")
 
 conn = redis.from_url(redis_url)
-
-conn.connect()
 worker = Worker([q], connection=conn)
 worker.work()
-conn.close()
