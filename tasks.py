@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 from io import BytesIO
 from urllib.parse import urlparse
+import redis
 
 app = Celery('tasks')
 url = urlparse(os.environ.get("REDIS_URL"))
