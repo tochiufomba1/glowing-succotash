@@ -8,7 +8,7 @@ app = Celery('tasks')
 app.conf.update(BROKER_URL=os.environ['REDIS_URL'],
                 CELERY_RESULT_BACKEND=os.environ['REDIS_URL'])
 
-@celery.task
+@app.task
 def createExcelFile(df_pickled, itemizedUnloaded):
     # Get frame with the original descriptions
     oldFrame = pickle.loads(df_pickled)
