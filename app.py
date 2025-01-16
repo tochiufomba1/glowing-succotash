@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 from flask_cors import CORS
 import redis
-from rq import Queue
+from celery import Celery
 import pickle
 import random
 import string
@@ -17,12 +17,11 @@ from urllib.parse import urlparse
 import psycopg2
 from flask_compress import Compress
 import helpers
-from rq.job import Job
+import tasks
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 url = urlparse(os.environ.get("REDIS_URL"))
 r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
-q = Queue(connection=r) 
 
 app = Flask(__name__, template_folder="./frontend/dist", static_url_path='/static', static_folder='./frontend/dist/static')
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
@@ -132,29 +131,24 @@ def recordDifferences(oldData, newData):
 def export():
     df_pickled = session.get('data', None)
     itemizedUnloaded = session.get('bertDescriptions', None)
-    job = q.enqueue(helpers.createExcelFile, df_pickled, itemizedUnloaded)
-    return jsonify({'job_id': job.id})
+    task = tasks.createExcelFile.apply_async(args=[df_pickled, itemizedUnloaded])
+    
+    return jsonify({'job_id': task.id})
 
 app.add_url_rule(
     "/api/export", endpoint="data", build_only=True
 )
 
-@app.route('/api/export/<string:jobID>')
-def exportFile(jobID):
-    job = Job.fetch(id=jobID, connection=r)
-    status = job.get_status(refresh=True)
+@app.route('/api/export/<task_id>')
+def exportFile(task_id):
+    task = generate_excel.AsyncResult(task_id)
+    if task.state == 'SUCCESS': 
+        helpers.deleteTmpFile(os.environ.get("UPLOAD_FOLDER"),session.get('filename'))
+        output = io.BytesIO(task.result) 
+        return send_file(output, as_attachment=True, download_name='labeledDatax.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') 
+    else: 
+        abort(500)
     
-    if status == "finished":
-        result = job.latest_result()
-
-        if result.type == result.Type.SUCCESSFUL:
-            output = io.BytesIO(result.return_value)
-            helpers.deleteTmpFile(os.environ.get("UPLOAD_FOLDER"),session.get('filename'))
-            return send_file(output, as_attachment=True, download_name='labeledDatax.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        else:
-            abort(500)
-    else:
-        abort(500) # send more detailed response
 
 @app.route("/api/updateItem/<int:id>", methods=['PUT'])
 def updateTable(id):
