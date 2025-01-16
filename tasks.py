@@ -9,8 +9,7 @@ import redis
 app = Celery('tasks')
 url = urlparse(os.environ.get("REDIS_URL"))
 r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
-app.conf.update(BROKER_URL=r,
-                CELERY_RESULT_BACKEND=r)
+app.conf.update(BROKER_URL=r, CELERY_RESULT_BACKEND=r)
 
 @app.task
 def createExcelFile(df_pickled, itemizedUnloaded):
