@@ -3,10 +3,13 @@ from celery import Celery
 import pickle
 import pandas as pd
 from io import BytesIO
+from urllib.parse import urlparse
 
 app = Celery('tasks')
-app.conf.update(BROKER_URL=os.environ['REDIS_URL'],
-                CELERY_RESULT_BACKEND=os.environ['REDIS_URL'])
+url = urlparse(os.environ.get("REDIS_URL"))
+r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
+app.conf.update(BROKER_URL=r,
+                CELERY_RESULT_BACKEND=r)
 
 @app.task
 def createExcelFile(df_pickled, itemizedUnloaded):
