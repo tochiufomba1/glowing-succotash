@@ -76,7 +76,8 @@ def data():
 
     # collect chart of account options for given business
     cur = conn.cursor()
-    
+    tableName = session.get('business') + "coa"
+
     try:
         res = cur.execute(
             sql.SQL("SELECT description FROM {};").format(sql.Identifier(tableName))
