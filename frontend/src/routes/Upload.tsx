@@ -54,9 +54,8 @@ export default function Upload() {
                 <input type="file" name="file" accept=".csv, .xlsx" required />
                 <label htmlFor="business">Business</label>
                 <select name="business" id="business">
-                    <option value="4 Ever Young">4 Ever Young</option>
-                    <option value="New Knowledge">New Knowledge</option>
-                    <option value="Nucare">Nucare</option>
+                    <option value="generic">Generic</option>
+                    <option value="nucare">Nucare</option>
                 </select>
                 <button type="submit" disabled={loading} >Submit</button> 
             </Form>

@@ -18,6 +18,7 @@ import psycopg2
 from flask_compress import Compress
 import helpers
 import tasks
+from psycopg2 import sql
 
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 url = urlparse(os.environ.get("REDIS_URL"))
@@ -75,19 +76,26 @@ def data():
 
     # collect chart of account options for given business
     cur = conn.cursor()
-    cur.execute("SELECT description FROM nucareCOA")
+    
+    try:
+        res = cur.execute(
+            sql.SQL("SELECT description FROM {};").format(sql.Identifier(tableName))
+        )
+    except Exception as e:
+        print(e)
+
     res = cur.fetchall()
-    nucareCOA = [str(row[0]) for row in res]
+    COA = [str(row[0]) for row in res]
     cur.close()
     
     # convert to JSON and send to frontend
-    if df_pickled and df_summary and nucareCOA:
+    if df_pickled and df_summary and COA:
         df = pickle.loads(df_pickled)
         df_json = df.to_json(orient='records')
         df2 = pickle.loads(df_summary)
         df_json2 = df2.to_json(orient='records')
 
-        optionsJSON = json.dumps(nucareCOA)
+        optionsJSON = json.dumps(COA)
 
         return jsonify({'table': df_json, 'summary': df_json2, 'options': optionsJSON})
     else:
@@ -141,7 +149,7 @@ app.add_url_rule(
 
 @app.route('/api/export/<task_id>')
 def exportFile(task_id):
-    task = generate_excel.AsyncResult(task_id)
+    task = tasks.createExcelFile.AsyncResult(task_id)
     if task.state == 'SUCCESS': 
         helpers.deleteTmpFile(os.environ.get("UPLOAD_FOLDER"),session.get('filename'))
         output = io.BytesIO(task.result) 

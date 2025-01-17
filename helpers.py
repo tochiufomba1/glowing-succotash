@@ -10,12 +10,8 @@ def classify(uploadFolder,filename, business):
     
     loaded = False
     if not loaded:
-        if business == "Nucare":
-            vectorizer, classifier = load('./backend/data/categorizer2.joblib')
-        else:
-            vectorizer, classifier = load('./backend/data/categorizer.joblib')
-
-        loaded = True
+         vectorizer, classifier = load(f"./backend/data/{business}.joblib")
+         loaded = True
 
     # TODO: Add functionality for csv files
     inputData = pd.read_excel(os.path.join(uploadFolder, filename))
